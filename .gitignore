@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+*.db-journal
+*.db-shm
+*.db-wal
+bakery-saved.db
