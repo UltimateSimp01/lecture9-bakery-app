@@ -498,6 +498,7 @@ PAGE_HTML = r'''<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <title>Bakery Order Desk</title>
+<link rel="icon" href="data:,">
 <style>
 :root {
   --paper:#f7f6f0;
@@ -1300,9 +1301,10 @@ dialog .actions {
 .local-feedback:focus-visible,#notice:focus-visible {outline:2px solid #8b582b;outline-offset:2px}
 </style></head>
 <body>
-<header><div class="wrap nav"><a class="brand" href="#top"><span class="mark" aria-hidden="true"><span class="loaf"></span></span>Bakery Order Desk</a><nav aria-label="Main navigation"><a href="#messages">Inbox</a><a href="#orders">Orders</a><a href="#calendar">Capacity</a><a href="/README.html">User guide</a></nav></div></header>
+<header><div class="wrap nav"><a class="brand" href="#top"><span class="mark" aria-hidden="true"><span class="loaf"></span></span>Bakery Order Desk</a><nav aria-label="Main navigation"><a href="#messages">Inbox</a><a href="#orders">Orders</a><a href="#calendar">Capacity</a><a href="./README.html">User guide</a></nav></div></header>
 <main class="wrap" id="top">
 <div class="hero"><div><div class="day-line"><small id="year">Simulated business day</small><span id="phase">Loading</span></div><h1><span id="date">Order desk</span><small id="weekday"></small></h1></div><div class="actions" id="mainActions"></div></div>
+<p id="previewNote" class="statusbar" hidden>This browser saves your progress. A fresh preview starts with 13 booked orders.</p>
 <p id="fetchGuidance" class="fetch-guidance" hidden>Loading messages applies valid changes and cancellations. Requests with too little notice or oven time are rejected immediately. Book any extra oven time first. <a href="#calendar">Review oven capacity</a></p>
 <div id="notice" class="statusbar" role="status" aria-live="polite" tabindex="-1"></div>
 <section class="stats" aria-label="Financial summary"><div class="stat"><span>Revenue from pickups</span><strong id="earned">—</strong></div><div class="stat"><span>Value awaiting pickup</span><strong id="booked">—</strong></div><div class="stat"><span>Helper costs</span><strong id="cost">—</strong></div></section>
@@ -1408,8 +1410,20 @@ function renderOrders(){
  byId('orderBody').innerHTML='<table class="order-table"><caption class="sr">Bakery orders by pickup date</caption><thead><tr><th scope="col">Customer</th><th scope="col">Product</th><th scope="col">Pickup</th><th scope="col">Amount</th><th scope="col">Status</th></tr></thead><tbody>'+rows.map(r=>'<tr><td><strong>'+html(r.customer)+'</strong><small>#'+html(r.id)+'</small></td><td>'+html(item(r.product,r.qty))+'<small>'+hours(r.minutes)+'</small></td><td>'+dateShort(r.pickup)+'</td><td class="money">'+money(r.amount)+'</td><td><span class="badge '+html(r.status)+'">'+html(statuses[r.status])+'</span></td></tr>').join('')+'</tbody></table>';
 }
 function setControls(){document.querySelectorAll('[data-action]').forEach(b=>{if(working){b.disabled=true}})}
+const isPreview=Boolean(window.bakeryPreview||document.querySelector('script[src="./client.js"]'));
+async function localRequest(url,options){
+ const response=await fetch(url,options);
+ const data=await response.json().catch(()=>{throw Error('The order desk returned an unreadable response. Refresh the page to try again.')});
+ if(!response.ok)throw Error(data.error||'The action could not be completed.');
+ return data;
+}
+const transport=isPreview?window.bakeryPreview:{
+ state:()=>localRequest('./api/state',{cache:'no-store'}),
+ apply:payload=>localRequest('./api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+};
 async function readState(){
- const response=await fetch('/api/state',{cache:'no-store'});if(!response.ok)throw Error('Couldn’t load order data.');setState(await response.json());
+ if(!transport)throw Error('The browser preview could not start. Refresh the page to load it again.');
+ setState(await transport.state());
 }
 function focusResult(payload,message,isError){
  document.querySelector('.local-feedback')?.remove();
@@ -1428,9 +1442,7 @@ async function send(payload){
  const version=state.version;working=true;setControls();setNotice(payload.action==='fetch'?'Loading today’s messages…':'Saving…');
  let message='',failed=false;
  try{
-  const res=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,version})});
-  const result=await res.json();
-  if(!res.ok)throw Error(result.error||'The action could not be completed.');
+  const result=await transport.apply({...payload,version});
   if(payload.action==='fetch')messageFilter=result.state.today;
   setState(result.state);message=result.message;
  }catch(e){
@@ -1468,7 +1480,15 @@ document.addEventListener('click',event=>{
 byId('approval').addEventListener('close',()=>{const payload=confirmAction;confirmAction=null;if(byId('approval').returnValue==='confirm'&&payload)send(payload)});
 byId('msgFilter').addEventListener('change',e=>{messageFilter=e.target.value;renderMessages();setControls()});
 byId('orderFilter').addEventListener('change',e=>{orderFilter=e.target.value;renderOrders()});
-readState().catch(()=>{setNotice('Couldn’t load your orders. Refresh the page to try again.',true);byId('phase').textContent='Unable to load'});
+if(isPreview){
+ byId('previewNote').hidden=false;
+ setNotice('Opening your saved orders in this browser…');
+ window.addEventListener('bakery-preview-progress',event=>{if(!state)setNotice(event.detail)});
+}
+readState().then(()=>{if(isPreview)setNotice('')}).catch(error=>{
+ setNotice(error.message||'Couldn’t load your orders. Refresh the page to try again.',true);
+ byId('phase').textContent='Unable to load';
+});
 </script></body></html>'''
 
 

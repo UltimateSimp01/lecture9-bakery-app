@@ -1,0 +1,40 @@
+name: Publish interactive preview
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check the shared order engine
+        run: python3 -m unittest discover -s tests
+      - name: Build the browser edition
+        run: python3 preview/build.py "$RUNNER_TEMP/bakery-site"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/bakery-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    steps:
+      - name: Publish GitHub Pages
+        id: publish
+        uses: actions/deploy-pages@v4

@@ -1,8 +1,12 @@
 # Bakery Order Desk
 
-A local order tracker for the MGOC50 Lecture 9 bakery exercise. Read seven days of Instagram messages, decide which orders to take, reserve oven time, book a helper, and reconcile pickups and revenue by week.
+An order tracker for the MGOC50 Lecture 9 bakery exercise. Read seven days of Instagram messages, decide which orders to take, reserve oven time, book a helper, and reconcile pickups and revenue by week.
 
-## Open the app
+**[Open the interactive bakery preview](https://ultimatesimp01.github.io/lecture9-bakery-app/)**
+
+The preview runs in your browser without a GitHub account. Start on Monday with 13 existing orders and select **Get today’s messages**. Your decisions are saved in this browser on this device. Clearing the site's stored data removes that progress.
+
+## Open the desktop app
 
 1. Download and extract the whole repository to a writable folder.
 2. On a Windows computer with Python 3 installed, double-click **Open Bakery Workbench**. The desk opens in your default browser.
@@ -17,3 +21,5 @@ The included `bakery.db` contains the saved classroom session. Each copy of the 
 ## Verification
 
 Run `python -m unittest discover -s tests` from the project folder to run the regression suite on temporary databases. The user guide includes the design diagrams, expert reviews, and expected results for the course scenarios.
+
+GitHub Pages builds the online edition from the same interface, Python order rules, and course files as the desktop edition. The published site includes its own copy of [Pyodide](https://github.com/pyodide/pyodide/releases/tag/314.0.8), which runs Python and SQLite inside the browser.
